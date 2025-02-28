@@ -7,7 +7,7 @@ services:
     container_name: dynamodb-local
     ports:
       - "8000:8000"
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
     volumes:
       - "./dynamodb-data:/home/dynamodblocal"
     working_dir: /home/dynamodblocal
@@ -16,9 +16,7 @@ services:
 
   # Spring Boot application
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: socialsports-app
     ports:
       - "8080:8080"
@@ -26,13 +24,9 @@ services:
       - dynamodb-local
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - AWS_DYNAMODB_ENDPOINT=http://dynamodb-local:8000
-      - AWS_ACCESS_KEY_ID=local
-      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
       - AWS_REGION=eu-west-1
-      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       - WHATSAPP_BUSINESS_PHONE_NUMBER_ID=${WHATSAPP_BUSINESS_PHONE_NUMBER_ID}
       - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
     networks:

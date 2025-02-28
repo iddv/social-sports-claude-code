@@ -1,85 +1,83 @@
 # SocialSports WhatsApp Chatbot
 
-A WhatsApp chatbot that facilitates the organization and coordination of sports events, initially focusing on padel.
+A Spring Boot application that facilitates sports event organization through WhatsApp.
 
 ## Features
 
-- Create and join sports events through WhatsApp
-- Receive notifications and reminders about events
-- Automatic WhatsApp group creation for event participants
-- Auto-cancellation of events with insufficient participants
-- User-friendly commands for event management
+- Create and manage sports events
+- Join existing events
+- Automatic WhatsApp group creation
+- Event reminders
+- Participant management
+- Premium user features
 
 ## Tech Stack
 
 - Java 17
 - Spring Boot 3.x
-- AWS DynamoDB for data storage
-- Twilio/WhatsApp Business API for messaging
-- RESTful webhook API for message processing
+- AWS DynamoDB
+- WhatsApp Business API for messaging
+- Docker & Docker Compose
+- Testcontainers for testing
 
 ## Prerequisites
 
-- JDK 17 or later
-- Maven 3.6 or later
-- AWS account (for DynamoDB)
-- Twilio account or Meta Business account (for WhatsApp Business API)
-- ngrok or similar for local webhook testing
+- Java 17 or higher
+- Maven
+- Docker
+- Meta Business account (for WhatsApp Business API)
+- AWS account (for production DynamoDB)
 
-## Environment Variables
+## Configuration
 
-The following environment variables need to be set:
+Create a `.env` file in the project root with:
 
-```
-# AWS Credentials
+```properties
+# AWS Configuration
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=your_region
 
-# Twilio Configuration
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_whatsapp_number
-
-# WhatsApp Business API (if using WhatsApp directly)
+# WhatsApp Business API Configuration
 WHATSAPP_BUSINESS_PHONE_NUMBER_ID=your_phone_number_id
 WHATSAPP_ACCESS_TOKEN=your_access_token
 ```
 
-## Getting Started
+## Development
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/social-sports-cc.git
-   cd social-sports-cc
-   ```
+### Running Locally
 
-2. Build the application:
-   ```
-   mvn clean install
-   ```
+1. Start local DynamoDB:
+```bash
+docker-compose up dynamodb-local
+```
 
-3. Start the local DynamoDB instance for development (optional):
-   ```
-   # Using Docker
-   docker run -p 8000:8000 amazon/dynamodb-local
-   ```
+2. Run the application:
+```bash
+mvn spring-boot:run
+```
 
-4. Run the application:
-   ```
-   mvn spring-boot:run
-   ```
+### Running Tests
+```bash
+mvn test
+```
 
-5. Expose the webhook endpoint using ngrok:
-   ```
-   ngrok http 8080
-   ```
+### Running with Docker
+```bash
+docker-compose up
+```
 
-6. Configure the webhook URL in the Twilio or WhatsApp Business dashboard:
+### Webhook Configuration
+
+1. Deploy the application to your server
+2. Configure the webhook URL in the WhatsApp Business dashboard:
    ```
-   https://your-ngrok-url.ngrok.io/api/webhook
+   https://your-domain/api/webhook
    ```
 
-## WhatsApp Bot Commands
+## API Commands
+
+The chatbot responds to the following WhatsApp commands:
 
 - `CREATE EVENT [sport] AT [location] ON [date] FOR [number] PLAYERS SKILL [1-5] BOOKING [optional-url]`
   - Creates a new sports event
@@ -106,7 +104,7 @@ WHATSAPP_ACCESS_TOKEN=your_access_token
 ## Development
 
 ### Running Tests
-```
+```bash
 mvn test
 ```
 
@@ -123,7 +121,7 @@ Tables will be created automatically on startup. The application uses the follow
 
 ### AWS Deployment
 1. Package the application:
-   ```
+   ```bash
    mvn package
    ```
 

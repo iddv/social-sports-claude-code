@@ -9,6 +9,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbParti
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -18,11 +19,13 @@ import java.util.Map;
 @AllArgsConstructor
 @DynamoDbBean
 public class Event {
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     
     private String id;
     private SportType sportType;
     private String location;
     private LocalDateTime eventTime;
+    private String eventTimeString; // For DynamoDB sort key
     private String creatorPhoneNumber;
     private List<String> participantPhoneNumbers;
     private Integer participantLimit;
@@ -40,7 +43,20 @@ public class Event {
     }
     
     @DynamoDbSortKey
-    public LocalDateTime getEventTime() {
-        return eventTime;
+    public String getEventTimeString() {
+        if (eventTimeString == null && eventTime != null) {
+            eventTimeString = eventTime.format(FORMATTER);
+        }
+        return eventTimeString;
+    }
+    
+    public void setEventTime(LocalDateTime eventTime) {
+        this.eventTime = eventTime;
+        this.eventTimeString = eventTime != null ? eventTime.format(FORMATTER) : null;
+    }
+    
+    public void setEventTimeString(String eventTimeString) {
+        this.eventTimeString = eventTimeString;
+        this.eventTime = eventTimeString != null ? LocalDateTime.parse(eventTimeString, FORMATTER) : null;
     }
 }

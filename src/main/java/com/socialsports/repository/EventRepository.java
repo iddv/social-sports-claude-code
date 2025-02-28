@@ -32,18 +32,17 @@ public class EventRepository {
     }
 
     public Optional<Event> findById(String id) {
-        Key key = Key.builder().partitionValue(id).build();
-        return Optional.ofNullable(eventTable.getItem(key));
+        return eventTable.scan().items()
+                .stream()
+                .filter(event -> event.getId().equals(id))
+                .findFirst();
     }
     
     public List<Event> findUpcomingEvents(LocalDateTime fromDateTime) {
-        QueryConditional queryConditional = QueryConditional.sortGreaterThanOrEqualTo(
-                (sortKey) -> sortKey.s(fromDateTime.toString()));
-                
-        return eventTable.query(queryConditional)
-                .items()
+        return eventTable.scan().items()
                 .stream()
-                .filter(event -> !event.getStatus().equals(EventStatus.CANCELED))
+                .filter(event -> event.getEventTime().isAfter(fromDateTime) &&
+                        !event.getStatus().equals(EventStatus.CANCELED))
                 .collect(Collectors.toList());
     }
     
