@@ -121,6 +121,103 @@ chmod +x scripts/init-dynamodb.sh
 ./mvnw spring-boot:run -Dspring.profiles.active=local
 ```
 
+### Setting Up LocalTunnel for Frontend Testing
+
+When developing locally, the frontend is typically running on a separate port (e.g., port 3000) and needs to make API calls to the backend. To expose your local backend server to the internet for testing:
+
+1. Install LocalTunnel globally or use npx:
+```bash
+# Install globally
+npm install -g localtunnel
+
+# Or use npx (no installation required)
+npx localtunnel
+```
+
+2. Start the backend server on port 8080:
+```bash
+./mvnw spring-boot:run -Dspring.profiles.active=local
+```
+
+3. In a separate terminal, create a tunnel to expose your local server:
+```bash
+# Using globally installed localtunnel
+lt --port 8080
+
+# Using npx
+npx localtunnel --port 8080
+```
+
+4. LocalTunnel will provide a public URL that you can use in your frontend environment variables:
+```
+your url is: https://xyz-abc-123.loca.lt
+```
+
+5. Update your frontend environment variables to use this URL as the API base URL:
+```
+API_BASE_URL=https://xyz-abc-123.loca.lt
+```
+
+Note: The LocalTunnel URL changes each time you restart the tunnel, so you'll need to update your environment variables accordingly.
+
+### Database Initialization and Test Data
+
+For a complete development environment, you'll need to:
+
+1. Start DynamoDB local:
+```bash
+docker-compose up -d dynamodb-local
+```
+
+2. Create required tables:
+```bash
+chmod +x scripts/init-dynamodb.sh
+./scripts/init-dynamodb.sh
+```
+
+3. Load test data (optional):
+```bash
+chmod +x scripts/load-test-data.sh
+./scripts/load-test-data.sh
+```
+
+4. Verify your data (optional):
+```bash
+chmod +x scripts/check-dynamodb.sh
+./scripts/check-dynamodb.sh --scan User
+./scripts/check-dynamodb.sh --scan Event
+```
+
+### Running Tests
+
+Tests use `application-test.properties` configuration file:
+
+```bash
+./mvnw test -Dspring.profiles.active=test
+```
+
+## Running the Application
+
+### Local Development
+
+For local development, we provide an `application-local.properties` file with hardcoded test values for required environment variables. 
+
+1. Start local DynamoDB first:
+```bash
+docker-compose up dynamodb-local
+```
+
+2. If this is your first time running, initialize the required tables:
+```bash
+chmod +x scripts/init-dynamodb.sh
+./scripts/init-dynamodb.sh
+```
+
+3. Run the application with:
+```bash
+./mvnw spring-boot:run -Dspring.profiles.active=local
+```
+
 ### Running Tests
 
 Tests use `application-test.properties` configuration file:
@@ -240,96 +337,3 @@ To use protected endpoints:
 
 1. Register a user: `POST /api/users/register`
 2. Login to get a JWT token: `POST /api/users/login`
-3. Include the JWT token in the `Authorization` header for subsequent requests:
-   ```
-   Authorization: Bearer <your_jwt_token>
-   ```
-
-## Deployment
-
-### AWS Deployment
-1. Package the application:
-   ```bash
-   mvn package
-   ```
-
-2. Deploy to AWS Elastic Beanstalk or AWS Lambda with API Gateway.
-
-3. Configure the WhatsApp webhook to point to your deployed application.
-
-## Production Configuration TODO
-
-The application currently needs several enhancements to be fully production-ready:
-
-### 1. Production Configuration File
-- Create `application-prod.properties` with production-specific settings
-- Remove local development hardcoded values
-- Configure proper production logging levels
-
-### 2. DynamoDB Configuration
-- Update DynamoDB configuration to use AWS default credential provider chain
-- Remove hardcoded endpoint configuration for production
-- Add support for IAM role-based authentication
-- Set up proper region configuration for production
-
-### 3. Secure Credential Handling
-- Implement secure credential management (AWS Secrets Manager or similar)
-- Remove hardcoded WhatsApp credentials from configuration files
-- Ensure OpenAI API keys are securely stored
-- Implement proper rotation strategy for secrets
-
-### 4. Infrastructure Management
-- Create infrastructure as code (CloudFormation/Terraform) for DynamoDB tables
-- Ensure tables have proper capacity planning for production
-- Set up backup and disaster recovery strategy
-- Consider multi-region availability if required
-
-### 5. Monitoring and Observability
-- Add production logging configuration
-- Implement health check endpoints
-- Set up monitoring and alerting
-- Configure operational dashboards
-
-## Roadmap
-
-- [x] Add support for multiple sports beyond padel
-- [x] Implement LLM integration for natural language processing
-- [ ] Add payment integration (e.g., Tikkie)
-- [ ] Create venue booking integration
-- [ ] Implement user rating system
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## API Documentation
-
-The application includes Swagger/OpenAPI documentation for the REST API endpoints.
-
-### Accessing Swagger UI
-
-After starting the application, you can access the Swagger UI at:
-```
-http://localhost:8080/swagger-ui/index.html
-```
-
-This provides an interactive interface to:
-- Explore available endpoints
-- View request/response models
-- Test API endpoints directly from the browser
-
-### OpenAPI JSON
-
-The OpenAPI specification is available at:
-```
-http://localhost:8080/v3/api-docs
-```
-
-You can use this to generate client code for integrating with the API.
-
-### API Endpoints
-
-The main API endpoints are:
-
-- `GET /api/webhook` - WhatsApp webhook verification endpoint
-- `POST /api/webhook` - Webhook for receiving WhatsApp messages
