@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -15,12 +16,20 @@ public class UserService {
     private final UserRepository userRepository;
 
     public User createUser(String phoneNumber, String name) {
+        return createUser(phoneNumber, name, null);
+    }
+    
+    public User createUser(String phoneNumber, String name, String email) {
+        String userId = UUID.randomUUID().toString();
         User user = User.builder()
+                .userId(userId)
                 .phoneNumber(phoneNumber)
                 .name(name)
+                .email(email)
                 .skillLevel(1)
                 .eventsCreated(0)
                 .eventsJoined(0)
+                .whatsappLinked(phoneNumber != null && !phoneNumber.isEmpty())
                 .isPremium(false)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -31,6 +40,14 @@ public class UserService {
 
     public Optional<User> getUserByPhoneNumber(String phoneNumber) {
         return userRepository.findByPhoneNumber(phoneNumber);
+    }
+    
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+    
+    public Optional<User> getUserById(String userId) {
+        return userRepository.findById(userId);
     }
 
     public User updateUser(User user) {

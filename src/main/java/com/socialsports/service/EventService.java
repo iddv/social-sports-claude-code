@@ -3,6 +3,7 @@ package com.socialsports.service;
 import com.socialsports.model.Event;
 import com.socialsports.model.EventStatus;
 import com.socialsports.model.SportType;
+import com.socialsports.model.User;
 import com.socialsports.repository.EventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +29,7 @@ public class EventService {
     @Value("${event.auto.cancel.hours}")
     private int autoCancelHours;
 
-    public Event createEvent(String creatorPhoneNumber, SportType sportType, String location, 
+    public Event createEvent(String creatorId, SportType sportType, String location, 
                             LocalDateTime eventTime, Integer participantLimit, Integer skillLevel, 
                             String bookingLink) {
         
@@ -38,6 +40,14 @@ public class EventService {
                                              minimumAdvanceHours + " hours in advance");
         }
         
+        // Get the user by ID
+        Optional<User> creator = userService.getUserById(creatorId);
+        if (!creator.isPresent()) {
+            throw new IllegalArgumentException("User not found");
+        }
+        
+        String creatorPhoneNumber = creator.get().getPhoneNumber();
+        
         // Check if the user can create an event (usage limits)
         if (!userService.canCreateEvent(creatorPhoneNumber)) {
             throw new IllegalArgumentException("You've reached your free event creation limit. " +
@@ -47,7 +57,7 @@ public class EventService {
         // Create a new event
         String eventId = UUID.randomUUID().toString();
         List<String> participants = new ArrayList<>();
-        participants.add(creatorPhoneNumber); // Creator automatically joins the event
+        participants.add(creatorId); // Creator automatically joins the event
         
         Map<String, Boolean> remindersSent = new HashMap<>();
         remindersSent.put("24h", false);
@@ -88,7 +98,69 @@ public class EventService {
         return eventRepository.findUpcomingEvents(LocalDateTime.now());
     }
     
-    public Event joinEvent(String eventId, String participantPhoneNumber) {
+    public List<Event> getUpcomingEvents(SportType sportType, Integer skillLevel, int page, int size) {
+        // Get all upcoming events
+        List<Event> events = getUpcomingEvents();
+        
+        // Apply filters
+        List<Event> filteredEvents = events.stream()
+            .filter(event -> sportType == null || event.getSportType() == sportType)
+            .filter(event -> skillLevel == null || event.getSkillLevel().equals(skillLevel))
+            .collect(Collectors.toList());
+        
+        // Apply pagination
+        int start = page * size;
+        int end = Math.min(start + size, filteredEvents.size());
+        
+        if (start >= filteredEvents.size()) {
+            return Collections.emptyList();
+        }
+        
+        return filteredEvents.subList(start, end);
+    }
+    
+    /**
+     * Get events for a specific user (events where the user is a participant)
+     * 
+     * @param userId The ID of the user
+     * @return List of events the user is participating in
+     */
+    public List<Event> getUserEvents(String userId) {
+        return eventRepository.findEventsByParticipant(userId, LocalDateTime.now());
+    }
+    
+    /**
+     * Get events for a specific user with filtering and pagination
+     * 
+     * @param userId The ID of the user
+     * @param sportType Optional sport type filter
+     * @param skillLevel Optional skill level filter
+     * @param page Page number (0-indexed)
+     * @param size Page size
+     * @return Filtered and paginated list of events the user is participating in
+     */
+    public List<Event> getUserEvents(String userId, SportType sportType, Integer skillLevel, int page, int size) {
+        // Get all user events
+        List<Event> events = getUserEvents(userId);
+        
+        // Apply filters
+        List<Event> filteredEvents = events.stream()
+            .filter(event -> sportType == null || event.getSportType() == sportType)
+            .filter(event -> skillLevel == null || event.getSkillLevel().equals(skillLevel))
+            .collect(Collectors.toList());
+        
+        // Apply pagination
+        int start = page * size;
+        int end = Math.min(start + size, filteredEvents.size());
+        
+        if (start >= filteredEvents.size()) {
+            return Collections.emptyList();
+        }
+        
+        return filteredEvents.subList(start, end);
+    }
+    
+    public Event joinEvent(String eventId, String userId) {
         return getEventById(eventId).map(event -> {
             // Check if the event is still accepting participants
             if (!event.getStatus().equals(EventStatus.CREATED)) {
@@ -101,13 +173,21 @@ public class EventService {
             }
             
             // Check if the user is already a participant
-            if (event.getParticipantPhoneNumbers().contains(participantPhoneNumber)) {
+            if (event.getParticipantPhoneNumbers().contains(userId)) {
                 throw new IllegalStateException("You are already a participant in this event");
             }
             
+            // Get the user by ID
+            Optional<User> user = userService.getUserById(userId);
+            if (!user.isPresent()) {
+                throw new IllegalStateException("User not found");
+            }
+            
+            String userPhoneNumber = user.get().getPhoneNumber();
+            
             // Add the participant
             List<String> participants = new ArrayList<>(event.getParticipantPhoneNumbers());
-            participants.add(participantPhoneNumber);
+            participants.add(userId);
             event.setParticipantPhoneNumbers(participants);
             event.setUpdatedAt(LocalDateTime.now());
             
@@ -123,10 +203,10 @@ public class EventService {
             Event updatedEvent = eventRepository.save(event);
             
             // Update user's event count
-            userService.incrementEventsJoined(participantPhoneNumber);
+            userService.incrementEventsJoined(userPhoneNumber);
             
             // Send join confirmation to the participant
-            whatsAppService.sendEventJoinConfirmation(updatedEvent, participantPhoneNumber);
+            whatsAppService.sendEventJoinConfirmation(updatedEvent, userPhoneNumber);
             
             return updatedEvent;
         }).orElseThrow(() -> new NoSuchElementException("Event not found"));

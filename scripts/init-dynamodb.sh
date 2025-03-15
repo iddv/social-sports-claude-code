@@ -18,9 +18,26 @@ echo "Creating User table..."
 aws dynamodb create-table $AWS_ARGS \
     --table-name User \
     --attribute-definitions \
+        AttributeName=userId,AttributeType=S \
         AttributeName=phoneNumber,AttributeType=S \
+        AttributeName=email,AttributeType=S \
     --key-schema \
-        AttributeName=phoneNumber,KeyType=HASH \
+        AttributeName=userId,KeyType=HASH \
+    --global-secondary-indexes \
+        "[
+            {
+                \"IndexName\": \"phoneNumber-index\",
+                \"KeySchema\": [{\"AttributeName\":\"phoneNumber\",\"KeyType\":\"HASH\"}],
+                \"Projection\": {\"ProjectionType\":\"ALL\"},
+                \"ProvisionedThroughput\": {\"ReadCapacityUnits\":5,\"WriteCapacityUnits\":5}
+            },
+            {
+                \"IndexName\": \"email-index\",
+                \"KeySchema\": [{\"AttributeName\":\"email\",\"KeyType\":\"HASH\"}],
+                \"Projection\": {\"ProjectionType\":\"ALL\"},
+                \"ProvisionedThroughput\": {\"ReadCapacityUnits\":5,\"WriteCapacityUnits\":5}
+            }
+        ]" \
     --provisioned-throughput \
         ReadCapacityUnits=5,WriteCapacityUnits=5
 

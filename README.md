@@ -23,6 +23,8 @@ A Spring Boot application that facilitates sports event organization through Wha
 - Premium user features
 - Natural language processing for event creation
 - Sport-specific requirements and equipment tracking
+- JWT-based authentication for API security
+- Test data generation for development and testing
 
 ## Tech Stack
 
@@ -31,6 +33,7 @@ A Spring Boot application that facilitates sports event organization through Wha
 - AWS DynamoDB
 - WhatsApp Business API for messaging
 - OpenAI GPT-4 for natural language processing
+- Spring Security with JWT authentication
 - Docker & Docker Compose
 - Testcontainers for testing
 - Swagger/OpenAPI for API documentation
@@ -60,6 +63,10 @@ WHATSAPP_ACCESS_TOKEN=your_access_token
 
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRATION=86400
 ```
 
 ## Development
@@ -186,6 +193,57 @@ Run the tests with:
 ```bash
 mvn test
 ```
+
+## Test Data Generation
+
+For development and testing, we provide a test data generation tool that creates realistic Dutch-focused sports events and user profiles.
+
+### Loading Test Data
+
+```bash
+# Make the script executable
+chmod +x scripts/load-test-data.sh
+
+# Run the script
+./scripts/load-test-data.sh
+```
+
+### Checking Test Data
+
+You can check the generated test data using the provided CLI tool:
+
+```bash
+# Make the script executable
+chmod +x scripts/check-dynamodb.sh
+
+# Show help and available commands
+./scripts/check-dynamodb.sh --help
+
+# View items in a table
+./scripts/check-dynamodb.sh --scan Event
+```
+
+For more details, see the [TEST_DATA_README.md](TEST_DATA_README.md) file.
+
+## Security
+
+The application implements JWT-based authentication for API security:
+
+- User registration and login endpoints are publicly accessible
+- All other endpoints require JWT authentication
+- JWT tokens are validated for each request
+- Tokens have a configurable expiration time
+
+### API Authentication
+
+To use protected endpoints:
+
+1. Register a user: `POST /api/users/register`
+2. Login to get a JWT token: `POST /api/users/login`
+3. Include the JWT token in the `Authorization` header for subsequent requests:
+   ```
+   Authorization: Bearer <your_jwt_token>
+   ```
 
 ## Deployment
 

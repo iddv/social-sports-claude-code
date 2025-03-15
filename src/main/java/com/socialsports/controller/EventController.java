@@ -1,6 +1,7 @@
 package com.socialsports.controller;
 
 import com.socialsports.model.Event;
+import com.socialsports.model.EventStatus;
 import com.socialsports.model.SportType;
 import com.socialsports.service.EventService;
 import com.socialsports.service.LLMService;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,13 +36,18 @@ public class EventController {
     private final EventService eventService;
     private final LLMService llmService;
 
-    @Operation(summary = "Get all upcoming events")
+    @Operation(summary = "Get all upcoming events with pagination and filtering")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Retrieved all upcoming events")
     })
     @GetMapping
-    public ResponseEntity<List<Event>> getUpcomingEvents() {
-        List<Event> events = eventService.getUpcomingEvents();
+    public ResponseEntity<List<Event>> getUpcomingEvents(
+            @RequestParam(required = false) SportType sportType,
+            @RequestParam(required = false) Integer skillLevel,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        List<Event> events = eventService.getUpcomingEvents(sportType, skillLevel, page, size);
         return ResponseEntity.ok(events);
     }
 
@@ -66,17 +73,17 @@ public class EventController {
     @PostMapping
     public ResponseEntity<Event> createEvent(@RequestBody Map<String, Object> eventData) {
         try {
-            String creatorPhoneNumber = (String) eventData.get("creatorPhoneNumber");
-            SportType sportType = SportType.valueOf((String) eventData.get("sportType"));
+            String creatorId = (String) eventData.get("createdBy");
+            SportType sportType = SportType.valueOf((String) eventData.get("sport"));
             String location = (String) eventData.get("location");
-            LocalDateTime eventTime = LocalDateTime.parse((String) eventData.get("eventTime"));
-            Integer participantLimit = (Integer) eventData.get("participantLimit");
+            LocalDateTime eventTime = LocalDateTime.parse((String) eventData.get("date"));
+            Integer maxPlayers = (Integer) eventData.get("maxPlayers");
             Integer skillLevel = (Integer) eventData.get("skillLevel");
-            String bookingLink = (String) eventData.get("bookingLink");
+            String bookingUrl = (String) eventData.get("bookingUrl");
             
             Event event = eventService.createEvent(
-                creatorPhoneNumber, sportType, location, eventTime, 
-                participantLimit, skillLevel, bookingLink
+                creatorId, sportType, location, eventTime, 
+                maxPlayers, skillLevel, bookingUrl
             );
             
             return new ResponseEntity<>(event, HttpStatus.CREATED);
@@ -115,8 +122,8 @@ public class EventController {
             @RequestBody Map<String, String> requestBody) {
         
         try {
-            String participantPhoneNumber = requestBody.get("phoneNumber");
-            Event joinedEvent = eventService.joinEvent(eventId, participantPhoneNumber);
+            String userId = requestBody.get("userId");
+            Event joinedEvent = eventService.joinEvent(eventId, userId);
             return ResponseEntity.ok(joinedEvent);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
@@ -154,5 +161,62 @@ public class EventController {
     @GetMapping("/sport-types")
     public ResponseEntity<SportType[]> getSportTypes() {
         return ResponseEntity.ok(SportType.values());
+    }
+
+    /**
+     * Get events for the current user (events where the user is a participant)
+     * 
+     * @param userId ID of the user to get events for
+     * @param sportType Optional sport type filter
+     * @param skillLevel Optional skill level filter
+     * @param page Page number for pagination
+     * @param size Page size for pagination
+     * @return List of events the user is participating in
+     */
+    @Operation(summary = "Get events for a specific user")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Retrieved user events successfully")
+    })
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Event>> getUserEvents(
+            @Parameter(description = "ID of the user to get events for") @PathVariable String userId,
+            @RequestParam(required = false) SportType sportType,
+            @RequestParam(required = false) Integer skillLevel,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        List<Event> events = eventService.getUserEvents(userId, sportType, skillLevel, page, size);
+        return ResponseEntity.ok(events);
+    }
+    
+    /**
+     * Get events for the currently authenticated user
+     * 
+     * @param sportType Optional sport type filter
+     * @param skillLevel Optional skill level filter
+     * @param page Page number for pagination
+     * @param size Page size for pagination
+     * @return List of events the current user is participating in
+     */
+    @Operation(summary = "Get events for the currently authenticated user")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Retrieved current user events successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized, user not authenticated")
+    })
+    @GetMapping("/my-events")
+    public ResponseEntity<List<Event>> getCurrentUserEvents(
+            @RequestParam(required = false) SportType sportType,
+            @RequestParam(required = false) Integer skillLevel,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        String userId = authentication.getName();
+        List<Event> events = eventService.getUserEvents(userId, sportType, skillLevel, page, size);
+        return ResponseEntity.ok(events);
     }
 } 

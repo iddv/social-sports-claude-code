@@ -9,6 +9,7 @@ import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,5 +58,34 @@ public class EventRepository {
 
     public void delete(Event event) {
         eventTable.deleteItem(event);
+    }
+    
+    /**
+     * Find all events in the database.
+     * 
+     * @return A list of all events
+     */
+    public List<Event> findAll() {
+        ScanEnhancedRequest scanRequest = ScanEnhancedRequest.builder().build();
+        return eventTable.scan(scanRequest)
+                .items()
+                .stream()
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Find events where the specified user is a participant.
+     * 
+     * @param userId The user ID to filter by
+     * @param fromDateTime Optional date to filter for events after this time
+     * @return A list of events where the user is a participant
+     */
+    public List<Event> findEventsByParticipant(String userId, LocalDateTime fromDateTime) {
+        return eventTable.scan().items()
+                .stream()
+                .filter(event -> event.getParticipantPhoneNumbers().contains(userId))
+                .filter(event -> fromDateTime == null || event.getEventTime().isAfter(fromDateTime))
+                .filter(event -> !event.getStatus().equals(EventStatus.CANCELED))
+                .collect(Collectors.toList());
     }
 }
