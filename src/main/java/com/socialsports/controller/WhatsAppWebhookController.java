@@ -1,6 +1,13 @@
 package com.socialsports.controller;
 
 import com.socialsports.service.MessageProcessingService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,6 +20,7 @@ import java.util.Map;
 @RequestMapping("/api/webhook")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "WhatsApp Webhook", description = "WhatsApp webhook endpoints for message handling")
 public class WhatsAppWebhookController {
 
     private final MessageProcessingService messageProcessingService;
@@ -20,11 +28,16 @@ public class WhatsAppWebhookController {
     /**
      * Handles WhatsApp API verification
      */
+    @Operation(summary = "Verify WhatsApp webhook", description = "Endpoint used by WhatsApp to verify the webhook subscription")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Webhook verified successfully"),
+        @ApiResponse(responseCode = "403", description = "Verification failed due to invalid token or mode")
+    })
     @GetMapping
     public ResponseEntity<String> verifyWebhook(
-            @RequestParam("hub.mode") String mode,
-            @RequestParam("hub.verify_token") String token,
-            @RequestParam("hub.challenge") String challenge) {
+            @Parameter(description = "Hub mode should be 'subscribe'") @RequestParam("hub.mode") String mode,
+            @Parameter(description = "Verification token to validate the webhook request") @RequestParam("hub.verify_token") String token,
+            @Parameter(description = "Challenge string to be returned if verification succeeds") @RequestParam("hub.challenge") String challenge) {
         
         // Note: In a real implementation, you would validate the token against your configured token
         if ("subscribe".equals(mode) && "my_verify_token".equals(token)) {
@@ -39,8 +52,14 @@ public class WhatsAppWebhookController {
     /**
      * Handles incoming WhatsApp messages
      */
+    @Operation(summary = "Receive WhatsApp messages", description = "Endpoint that receives incoming messages from WhatsApp")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Message received and processed")
+    })
     @PostMapping
-    public ResponseEntity<String> receiveMessage(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<String> receiveMessage(
+            @Parameter(description = "WhatsApp message payload", required = true) 
+            @RequestBody Map<String, Object> payload) {
         log.info("Received webhook payload: {}", payload);
         
         try {
