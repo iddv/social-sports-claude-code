@@ -31,6 +31,7 @@ public class SecurityConfig {
             .authorizeHttpRequests()
             .requestMatchers("/api/users/register", "/api/users/login", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
             .requestMatchers("/api/events/sport-types").permitAll()
+            .requestMatchers("/api/stats").permitAll()
             .anyRequest().authenticated()
             .and()
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
